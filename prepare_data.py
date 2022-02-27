@@ -2,6 +2,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import tensorly as tl
 
 
 def subsample_data(df: pd.DataFrame) -> np.ndarray:
@@ -29,35 +30,30 @@ def subsample_data(df: pd.DataFrame) -> np.ndarray:
 
     # Some of the weather features are categories; we'll get rid of those
     # for the purpose of this exercise
-    drop_cols = ["cloud", "lightning_prob", "precip"]
+    drop_cols = ["cloud", "lightning_prob", "precip", "cloud_ceiling", "visibility"]
     df = df.drop(columns=drop_cols)
+    df = df.dropna()
 
-    # We'll limit the dataset to the first 1000 samples
-    return df.iloc[:1000, :].to_numpy()
+    # Let's grab 2000 random samples from the data to help with SVD convergence
+    rng = np.random.default_rng(17)
+    idx = rng.choice(np.arange(df.shape[0]), size=2000, replace=False)
+    return df.iloc[idx, :].to_numpy()
 
 
 def main():
     p = Path("data")
-    atl = pd.read_csv(
-        p / "katl_lamp.csv.bz2", parse_dates=["timestamp", "forecast_timestamp"]
-    )
+    files = p.glob("*.bz2")
+    dfs = [
+        pd.read_csv(file, parse_dates=["timestamp", "forecast_timestamp"])
+        for file in files
+    ]
 
-    clt = pd.read_csv(
-        p / "kclt_lamp.csv.bz2", parse_dates=["timestamp", "forecast_timestamp"]
-    )
+    # We'll subsample the data to include only 2000 instances for the purposes
+    # of this assignment this should give a (2000 x J X K) tensor
+    arrs = [subsample_data(df) for df in dfs]
 
-    den = pd.read_csv(
-        p / "kden_lamp.csv.bz2", parse_dates=["timestamp", "forecast_timestamp"]
-    )
-
-    # We'll subsample the data to include only 100 instances for the purposes
-    # of this assignment this should give a (100 x K x 3) tensor
-    atl = subsample_data(atl)
-    clt = subsample_data(clt)
-    den = subsample_data(den)
-
-    # Finally merge the three datasets into a tensor
-    X = np.stack((atl, clt, den), axis=2)
+    # Merge the three datasets into a tensor
+    X = np.stack(arrs, axis=2)
 
     # Write to disk
     np.save(p / "data.npy", X)

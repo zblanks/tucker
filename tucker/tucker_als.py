@@ -5,10 +5,6 @@ import numpy as np
 from tucker.hosvd import HOSVD
 
 
-class ConvergenceWarning(Warning):
-    pass
-
-
 class TuckerALS:
     def __init__(
         self,
@@ -68,9 +64,8 @@ class TuckerALS:
                 return None
 
         # Failed to converge after max_iter
-        raise ConvergenceWarning(
-            f"Failed to converge after {self.max_iter} iterations."
-        )
+        print(f"Failed to converage after {self.max_iter} iterations")
+        return None
 
     def fit(self) -> Tuple[np.ndarray, ...]:
         self._initialize()
